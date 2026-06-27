@@ -14,18 +14,18 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS SUPER KEREN
+# CSS
 st.markdown("""
 <style>
     /* Background gradien gelap */
     .stApp {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        background: linear-gradient(135deg);
     }
     
     .main-title {
         font-size: 3.5rem;
         font-weight: 800;
-        background: linear-gradient(135deg, #00d2ff, #3a7bd5, #00d2ff);
+        background: linear-gradient(135deg);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
@@ -75,8 +75,9 @@ st.markdown("""
         margin-top: 0.3rem;
     }
     
+    /* CLUSTER BOX - WARNA PUTIH TERANG */
     .cluster-box {
-        background: rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.08);
         backdrop-filter: blur(10px);
         border-radius: 12px;
         padding: 1rem;
@@ -91,12 +92,29 @@ st.markdown("""
     
     .cluster-box h4 {
         margin: 0;
-        color: #00d2ff;
+        color: #ffffff;
+        font-size: 1.1rem;
+        font-weight: 700;
     }
     
     .cluster-box p {
-        color: #8892b0;
+        color: #e0e0e0 !important;
         margin: 0.3rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .cluster-box b {
+        color: #ffffff !important;
+    }
+    
+    /* SIDEBAR - TEKS PUTIH TERANG */
+    .css-1d391kg {
+        background: rgba(255,255,255,0.05);
+        backdrop-filter: blur(10px);
+    }
+    
+    .sidebar-text {
+        color: #e0e0e0 !important;
     }
     
     .footer {
@@ -106,12 +124,6 @@ st.markdown("""
         font-size: 0.9rem;
         border-top: 1px solid rgba(255,255,255,0.05);
         margin-top: 2rem;
-    }
-    
-    /* Sidebar */
-    .css-1d391kg {
-        background: rgba(255,255,255,0.03);
-        backdrop-filter: blur(10px);
     }
     
     .stDownloadButton button {
@@ -258,7 +270,7 @@ geo_data['Deskripsi'] = geo_data['Cluster'].map(
 geo_data['lat'] = geo_data['Provinsi'].map(lambda x: COORDS.get(x, [0,0])[0])
 geo_data['lon'] = geo_data['Provinsi'].map(lambda x: COORDS.get(x, [0,0])[1])
 
-# Buat peta dengan warna cluster
+# Buat peta dengan warna cluster - 32 PROVINSI
 fig = px.scatter_geo(
     geo_data,
     lat='lat',
@@ -268,7 +280,7 @@ fig = px.scatter_geo(
     size='Harga',
     size_max=45,
     color_continuous_scale='Viridis',
-    title=f'<b>{selected}</b> - Clustering 34 Provinsi',
+    title=f'<b>{selected}</b> - Clustering 32 Provinsi',
     template='plotly_dark'
 )
 
