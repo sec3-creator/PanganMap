@@ -209,6 +209,3 @@ st.download_button(
 
 # FOOTER
 st.markdown('<div class="footer">🗺️ PanganMap • Peta Interaktif Harga Pangan Indonesia</div>', unsafe_allow_html=True)
-
-from google.colab import files
-files.download('app.py')
