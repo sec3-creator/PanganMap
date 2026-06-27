@@ -81,17 +81,6 @@ COORDS = {
     'Sumatera Selatan': [-3.0, 104.0], 'Sumatera Utara': [2.0, 99.0]
 }
 
-# MAIN
-try:
-    df = load_data()
-    st.success("Data real berhasil dimuat dari Harga Pangan.xlsx")
-except FileNotFoundError:
-    st.error("File 'Harga Pangan.xlsx' tidak ditemukan! Upload file Excel ke repository.")
-    st.stop()
-except Exception as e:
-    st.error(f"Error loading data: {e}")
-    st.stop()
-
 # Sidebar
 with st.sidebar:
     st.markdown("## ⚙️ Pengaturan")
