@@ -1,7 +1,9 @@
+%%writefile app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import pickle
 
 # KONFIGURASI HALAMAN
 st.set_page_config(
@@ -44,6 +46,17 @@ st.markdown("""
         color: #b2bec3;
         font-size: 0.9rem;
     }
+    .cluster-box {
+        padding: 0.8rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #00b894;
+        background: rgba(255,255,255,0.03);
+    }
+    .cluster-box h4 {
+        margin: 0;
+        color: #00b894;
+    }
     .footer {
         text-align: center;
         color: #636e72;
@@ -55,14 +68,21 @@ st.markdown("""
 
 # HEADER
 st.markdown('<div class="main-title">🗺️ PanganMap</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">📍 Peta Interaktif Harga Pangan Seluruh Indonesia</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">📍 Peta Interaktif Harga Pangan & Clustering Provinsi</div>', unsafe_allow_html=True)
 
-# LOAD DATA REAL
+# LOAD DATA
 @st.cache_data
 def load_data():
-    """Load data real dari file Excel"""
     df = pd.read_excel('Harga Pangan.xlsx')
     return df
+
+@st.cache_data
+def load_cluster_results():
+    with open('cluster_results.pkl', 'rb') as f:
+        cluster_results = pickle.load(f)
+    with open('cluster_analysis.pkl', 'rb') as f:
+        cluster_analysis = pickle.load(f)
+    return cluster_results, cluster_analysis
 
 # KOORDINAT PROVINSI
 COORDS = {
@@ -84,29 +104,33 @@ COORDS = {
 # MAIN
 try:
     df = load_data()
-    st.success("Data real berhasil dimuat dari Harga Pangan.xlsx")
-except FileNotFoundError:
-    st.error("File 'Harga Pangan.xlsx' tidak ditemukan! Upload file Excel ke repository.")
+    cluster_results, cluster_analysis = load_cluster_results()
+except FileNotFoundError as e:
+    st.error(f"❌ File tidak ditemukan: {e}")
     st.stop()
 except Exception as e:
-    st.error(f"Error loading data: {e}")
+    st.error(f"❌ Error: {e}")
     st.stop()
 
 # Sidebar
 with st.sidebar:
     st.markdown("## ⚙️ Pengaturan")
     
-    if 'Komoditas' in df.columns:
-        komoditas_list = df['Komoditas'].unique().tolist()
-        selected = st.selectbox("📌 Pilih Komoditas", komoditas_list)
-        df_filter = df[df['Komoditas'] == selected]
-    else:
-        df_filter = df
+    komoditas_list = df['Komoditas'].unique().tolist()
+    selected = st.selectbox("📌 Pilih Komoditas", komoditas_list)
+    
+    df_filter = df[df['Komoditas'] == selected]
     
     st.markdown("---")
     st.markdown(f"**📍 Provinsi**: {df_filter['Provinsi'].nunique()}")
-    if 'Tanggal' in df_filter.columns:
-        st.markdown(f"**📅 Periode**: {df_filter['Tanggal'].min().strftime('%d %b %Y')} - {df_filter['Tanggal'].max().strftime('%d %b %Y')}")
+    st.markdown(f"**📅 Periode**: {df_filter['Tanggal'].min().strftime('%d %b %Y')} - {df_filter['Tanggal'].max().strftime('%d %b %Y')}")
+    
+    # Info clustering
+    if selected in cluster_results:
+        result = cluster_results[selected]
+        st.markdown(f"**🔢 Cluster**: {result['n_clusters']}")
+        st.markdown(f"**📊 Silhouette**: {result['silhouette_score']:.4f}")
+    
     st.markdown("---")
     st.caption("Made with ❤️ | PanganMap")
 
@@ -138,34 +162,58 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
 
-# PETA
-st.markdown("### 🗺️ Peta Sebaran Harga")
+# ============ PETA DENGAN CLUSTER ============
+st.markdown("### 🗺️ Peta Clustering Provinsi")
 
+# Ambil data cluster
+result = cluster_results[selected]
+labels = result['labels']
+provinsi_list = result['provinsi_list']
+provinsi_cluster = dict(zip(provinsi_list, labels + 1))
+
+# Siapkan data geo
 geo_data = df_filter.groupby('Provinsi')['Harga'].mean().reset_index()
+geo_data['Cluster'] = geo_data['Provinsi'].map(provinsi_cluster)
+
+# Tambahkan interpretasi
+interpretation = cluster_analysis[selected]['interpretation']
+geo_data['Kategori'] = geo_data['Cluster'].map(
+    lambda x: interpretation[x]['kategori_harga'] if x in interpretation else '-'
+)
+geo_data['Volatilitas'] = geo_data['Cluster'].map(
+    lambda x: interpretation[x]['volatilitas'] if x in interpretation else '-'
+)
+geo_data['Deskripsi'] = geo_data['Cluster'].map(
+    lambda x: interpretation[x]['deskripsi'] if x in interpretation else '-'
+)
+
 geo_data['lat'] = geo_data['Provinsi'].map(lambda x: COORDS.get(x, [0,0])[0])
 geo_data['lon'] = geo_data['Provinsi'].map(lambda x: COORDS.get(x, [0,0])[1])
+
+# Warna untuk cluster
+cluster_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
 
 fig = px.scatter_geo(
     geo_data,
     lat='lat',
     lon='lon',
     hover_name='Provinsi',
-    color='Harga',
+    color='Cluster',
     size='Harga',
-    size_max=35,
-    color_continuous_scale=[
-        (0, '#2ecc71'),
-        (0.3, '#27ae60'),
-        (0.5, '#f1c40f'),
-        (0.7, '#e67e22'),
-        (1.0, '#e74c3c')
-    ],
-    template='plotly_dark',
-    title=f'Sebaran Harga {selected if "Komoditas" in df.columns else "Pangan"}'
+    size_max=40,
+    color_continuous_scale='Viridis',
+    title=f'Clustering Harga {selected} - {result["n_clusters"]} Cluster',
+    template='plotly_dark'
 )
 
 fig.update_traces(
-    hovertemplate='<b>%{hovertext}</b><br>💰 Harga: Rp %{marker.size:,.0f}<br><extra></extra>',
+    hovertemplate='<b>%{hovertext}</b><br>' +
+                  '💰 Harga: Rp %{marker.size:,.0f}<br>' +
+                  '🔢 Cluster: %{marker.color}<br>' +
+                  '📊 Kategori: %{customdata[0]}<br>' +
+                  '📈 Volatilitas: %{customdata[1]}<br>' +
+                  '<extra></extra>',
+    customdata=geo_data[['Kategori', 'Volatilitas']].values,
     marker=dict(line=dict(width=2, color='white'), opacity=0.9)
 )
 
@@ -182,8 +230,7 @@ fig.update_layout(
         showframe=False
     ),
     coloraxis_colorbar=dict(
-        title="Harga (Rp)",
-        tickprefix="Rp ",
+        title="Cluster",
         len=0.5,
         thickness=20
     )
@@ -191,9 +238,26 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
+# INTERPRETASI CLUSTER
+st.subheader("📝 Cluster")
+
+cols = st.columns(len(interpretation))
+for idx, (cluster_id, info) in enumerate(interpretation.items()):
+    with cols[idx % len(cols)]:
+        color = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'][idx % 5]
+        st.markdown(f"""
+        <div class="cluster-box" style="border-left-color: {color};">
+            <h4>Cluster {cluster_id}</h4>
+            <p><b>Deskripsi:</b> {info['deskripsi']}</p>
+            <p><b>Provinsi:</b> {info['jumlah']}</p>
+            <p><b>Rata-rata:</b> Rp {info['rata_rata']:,.0f}</p>
+            <p><b>Provinsi:</b> {', '.join(info['provinsi'][:4])}{' ...' if len(info['provinsi']) > 4 else ''}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 # TABEL
 st.subheader("📋 Data Lengkap Per Provinsi")
-table_data = geo_data[['Provinsi', 'Harga']].copy()
+table_data = geo_data[['Provinsi', 'Cluster', 'Kategori', 'Volatilitas', 'Harga']].copy()
 table_data['Harga'] = table_data['Harga'].map(lambda x: f"Rp {x:,.0f}")
 table_data = table_data.sort_values('Provinsi')
 st.dataframe(table_data, use_container_width=True, height=400)
@@ -203,9 +267,9 @@ csv = geo_data.to_csv(index=False)
 st.download_button(
     label="📥 Download CSV",
     data=csv,
-    file_name=f'panganmap_{selected if "Komoditas" in df.columns else "data"}.csv',
+    file_name=f'panganmap_cluster_{selected}.csv',
     mime='text/csv'
 )
 
 # FOOTER
-st.markdown('<div class="footer">🗺️ PanganMap • Peta Interaktif Harga Pangan Indonesia</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">🗺️ PanganMap • Clustering Harga Pangan Indonesia</div>', unsafe_allow_html=True)
