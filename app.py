@@ -75,7 +75,7 @@ st.markdown("""
         margin-top: 0.3rem;
     }
     
-    /* CLUSTER BOX - WARNA PUTIH TERANG */
+    /* CLUSTER BOX */
     .cluster-box {
         background: rgba(255,255,255,0.08);
         backdrop-filter: blur(10px);
@@ -92,7 +92,7 @@ st.markdown("""
     
     .cluster-box h4 {
         margin: 0;
-        color: #ffffff;
+        color: #ffffff !important;
         font-size: 1.1rem;
         font-weight: 700;
     }
@@ -107,14 +107,10 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* SIDEBAR - TEKS PUTIH TERANG */
+    /* SIDEBAR */
     .css-1d391kg {
-        background: rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.03);
         backdrop-filter: blur(10px);
-    }
-    
-    .sidebar-text {
-        color: #e0e0e0 !important;
     }
     
     .footer {
